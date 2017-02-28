@@ -1,4 +1,1 @@
-This is your new Play application
-=================================
-
-This file will be packaged with your application, when using `activator dist`.
+Bot that aims to publish Top-Artists of a Spotify-User to twitter
