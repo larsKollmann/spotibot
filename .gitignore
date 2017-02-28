@@ -16,6 +16,6 @@ dist
 /out
 /.classpath
 /RUNNING_PID
-/activator
-/activator.bat
-/activator-launch-1.3.2.jar
+activator
+activator.bat
+activator-launch-1.3.2.jar
