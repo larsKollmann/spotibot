@@ -1,6 +1,7 @@
 package controllers
 
 import javax.inject._
+
 import com.google.common.base.Strings
 import org.apache.commons.lang3.RandomStringUtils
 import play.api._
@@ -11,7 +12,7 @@ import play.api.mvc._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Success
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
-
+import play.libs.Json
 
 import scala.concurrent.Future
 
@@ -51,7 +52,8 @@ class Application @Inject()(ws: WSClient, configuration: Configuration) extends
           .withHeaders("Authorization" -> ("Bearer " + token))
           .withRequestFilter(AhcCurlRequestLogger())
           .get.map[Result] { meResp =>
-          Ok(meResp.body)
+          val artists = Json.parse(meResp.body).findValues("name").toArray.map(_.toString)
+          Ok(views.html.topartists(artists))
         }
       case _ => Future.successful(Redirect(routes.Application.login()))
     }
