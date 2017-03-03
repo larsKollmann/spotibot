@@ -10,14 +10,17 @@ import play.api.libs.ws.{WSAuthScheme, WSClient}
 import play.api.mvc._
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Success
+import scala.util.{Failure, Success}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.libs.Json
+import services.{SpotifyArtists, WSSpotifyService}
 
 import scala.concurrent.Future
 
 class Application @Inject()(ws: WSClient, configuration: Configuration) extends
   Controller {
+
+  val spotifyService = new WSSpotifyService(ws, configuration)
 
   val stateKey = "spotify_auth_state"
 
@@ -46,17 +49,9 @@ class Application @Inject()(ws: WSClient, configuration: Configuration) extends
   }
 
   def showMe = Action.async { implicit request =>
-    accessToken match {
-      case Some(token) =>
-        ws.url("https://api.spotify.com/v1/me/top/artists?limit=5")
-          .withHeaders("Authorization" -> ("Bearer " + token))
-          .withRequestFilter(AhcCurlRequestLogger())
-          .get.map[Result] { meResp =>
-          val artists = Json.parse(meResp.body).findValues("name").toArray.map(_.toString)
-          Ok(views.html.topartists(artists))
-        }
-      case _ => Future.successful(Redirect(routes.Application.login()))
-    }
+    val artists = spotifyService.fetchLatestTopArtists(accessToken)
+    artists.map(artistList => Ok(views.html.topartists(artistList))).
+      recover{case thrown => Redirect(routes.Application.login())}
   }
 
   def callback(code: String, state: String) = Action.async { request =>

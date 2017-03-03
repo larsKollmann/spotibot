@@ -4,6 +4,7 @@ import com.google.common.collect.MapDifference.ValueDifference
 import org.joda.time.{DateTime, Period}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 
 trait StatisticsService {
 
@@ -33,7 +34,7 @@ class DefaultStatisticsService(
 
           spotifyService.postTweet(
             s"@$username in the past $durationInDays your artists " +
-              s"${phrasing(artistdifference)} ${artistdifference.mkString}"
+              s"${phrasing(artistdifference)} ${artistdifference.mkString(" ")}"
           )
 
       }
@@ -41,16 +42,62 @@ class DefaultStatisticsService(
 
     val previousArtists: Future[StoredArtists] = statisticsRepository.retrieveLatestArtists(username)
 
-    val currentArtists: Future[SpotifyArtists] = spotifyService.fetchLatestTopArtists(username)
+    val currentArtists: Future[SpotifyArtists] = spotifyService.fetchLatestTopArtists(Option(username))
 
-    val counts: Future[(previousArtists, currentArtists)] = for {
+    val counts: Future[(StoredArtists, SpotifyArtists)] = for {
       previous <- previousArtists
       current <- currentArtists
     } yield {
       (previous, current)
     }
-    Future.successful({})
+
+    val storedArtists: Future[Unit] = counts.flatMap(storeArtists)
+    val publishedMessage: Future[Unit] = counts.flatMap(publishMessage)
+
+    val result = for {
+      _ <- storedArtists
+      _ <- publishedMessage
+    } yield {}
+
+    result recoverWith {
+      case CountStorageException(countsToStore) =>
+        retryStoring(countsToStore, attemptNumber = 0)
+    } recover {
+      case CountStorageException(countsToStore) =>
+        throw StatisticsServiceFailed("We couldn't save the statistics to our database. Next time it will work!")
+      case CountRetrievalException(user, cause) =>
+        throw StatisticsServiceFailed("We have a problem with our database. Sorry!", cause)
+      case NonFatal(t) =>
+        throw StatisticsServiceFailed("We have an unknown problem. Sorry!", t)
+    }
+
   }
 
+  private def retryStoring(counts: StoredArtists, attemptNumber: Int)(implicit ec: ExecutionContext): Future[Unit] = {
+    if (attemptNumber < 3) {
+      statisticsRepository.storeArtists(counts).recoverWith {
+        case NonFatal(t) => retryStoring(counts, attemptNumber + 1)
+      }
+    } else {
+      Future.failed(CountStorageException(counts))
+    }
+  }
 
+}
+
+class StatisticsServiceFailed(cause: Throwable)
+  extends RuntimeException(cause) {
+  def this(message: String) = this(new RuntimeException(message))
+
+  def this(message: String, cause: Throwable) =
+    this(new RuntimeException(message, cause))
+}
+
+object StatisticsServiceFailed {
+  def apply(message: String): StatisticsServiceFailed =
+    new StatisticsServiceFailed(message)
+
+  def apply(message: String, cause: Throwable):
+  StatisticsServiceFailed =
+    new StatisticsServiceFailed(message, cause)
 }
