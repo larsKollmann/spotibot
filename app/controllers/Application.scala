@@ -13,15 +13,15 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.libs.Json
-import services.{SpotifyArtists, WSSpotifyService}
+import services.{DefaultStatisticsService, MongoStatisticsRepository, SpotifyArtists, WSSpotifyService}
 
 import scala.concurrent.Future
 
-class Application @Inject()(ws: WSClient, configuration: Configuration) extends
+class Application @Inject()(ws: WSClient, configuration: Configuration, mongoStatisticsRepository: MongoStatisticsRepository) extends
   Controller {
 
   val spotifyService = new WSSpotifyService(ws, configuration)
-
+  val statisticsService = new DefaultStatisticsService(mongoStatisticsRepository,spotifyService)
   val stateKey = "spotify_auth_state"
 
   lazy val clientId = configuration.getString("spotify.clientId").get
@@ -38,7 +38,6 @@ class Application @Inject()(ws: WSClient, configuration: Configuration) extends
 
   def login = Action {
     val currentState = RandomStringUtils.random(16, true, true)
-
     Redirect("https://accounts.spotify.com/authorize",
       Map("response_type" -> List("code"),
         "client_id" -> List(clientId),
@@ -48,10 +47,14 @@ class Application @Inject()(ws: WSClient, configuration: Configuration) extends
       .withCookies(Cookie(stateKey, currentState, path = "/", maxAge = Some(30000)))
   }
 
+
+  //TODO:Setup Mongo DB for commented code to work
+
   def showMe = Action.async { implicit request =>
     val artists = spotifyService.fetchLatestTopArtists(accessToken)
+    //val tweet = statisticsService.createUserStatistics(accessToken.get)
     artists.map(artistList => Ok(views.html.topartists(artistList))).
-      recover{case thrown => Redirect(routes.Application.login())}
+      recover { case thrown => Redirect(routes.Application.login()) }
   }
 
   def callback(code: String, state: String) = Action.async { request =>

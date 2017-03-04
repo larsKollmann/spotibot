@@ -24,8 +24,8 @@ trait SpotifyService {
 case class SpotifyArtists(Artists: Array[String])
 
 
-class WSSpotifyService @Inject()(ws: WSClient, configuration: Configuration) extends SpotifyService {
-  override def fetchLatestTopArtists(token: Option[String])(implicit ec: ExecutionContext): Future[services.SpotifyArtists] = {
+class WSSpotifyService(ws: WSClient, configuration: Configuration) extends SpotifyService {
+  override def fetchLatestTopArtists(token: Option[String])(implicit ec: ExecutionContext): Future[SpotifyArtists] = {
     token match {
       case Some(token) =>
         ws.url("https://api.spotify.com/v1/me/top/artists?limit=5")
@@ -38,7 +38,9 @@ class WSSpotifyService @Inject()(ws: WSClient, configuration: Configuration) ext
     }
   }
 
-  override def postTweet(message: String)(implicit ec: ExecutionContext): Future[Unit] = ???
+  override def postTweet(message: String)(implicit ec: ExecutionContext): Future[Unit] = {
+    Future.successful(println("Twitter: " + message))
+  }
 
 
   private def credentials = for {
