@@ -28,6 +28,8 @@ class DefaultStatisticsService(
       counts match {
         case (previous, current) => val artistdifference = previous.artists.diff(current.Artists)
 
+          println(artistdifference.mkString(" "))
+
           def phrasing(difference: Array[String]): String = if (difference.isEmpty) "remained the same" else "changed"
 
           val durationInDays = new Period(previous.when, DateTime.now).getDays

@@ -52,7 +52,7 @@ class Application @Inject()(ws: WSClient, configuration: Configuration, mongoSta
 
   def showMe = Action.async { implicit request =>
     val artists = spotifyService.fetchLatestTopArtists(accessToken)
-    //val tweet = statisticsService.createUserStatistics(accessToken.get)
+    val tweet = statisticsService.createUserStatistics(accessToken.get)
     artists.map(artistList => Ok(views.html.topartists(artistList))).
       recover { case thrown => Redirect(routes.Application.login()) }
   }
