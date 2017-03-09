@@ -3,15 +3,16 @@
 # ~~~~
 
 # Home page
-GET        /                    controllers.Application.index
+GET        /                    controllers.Spotify.index
 
 # Get Spotify TopArtists
 
 
-GET        /login               controllers.Application.login
-GET        /callback            controllers.Application.callback(code, state)
-GET        /topartists                  controllers.Application.showMe
+GET        /login               controllers.Spotify.login
+GET        /callback            controllers.Spotify.callback(code, state)
+GET        /topartists          controllers.Spotify.showMe
 
+GET        /authenticate        controllers.Twitter.authenticate
 # Map static resources from the /public folder to the /assets URL path
 GET        /assets/*file        controllers.Assets.versioned(path="/public", file: Asset)
 

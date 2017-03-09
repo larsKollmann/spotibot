@@ -1,10 +1,6 @@
-<!doctype html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>Home</title>
-    </head>
-    <body>
-        <a href="/login">Login</a>
-    </body>
-</html>
+@main(title = "topartists") {
+    <div class="row"><img src="@routes.Assets.versioned("images/spotify_logo.png")" height="50" /></div>
+    <div class="row">
+        <a class="btn btn-success" href="/login">Login</a>
+    </div>
+}

@@ -17,7 +17,7 @@ import services.{DefaultStatisticsService, MongoStatisticsRepository, SpotifyArt
 
 import scala.concurrent.Future
 
-class Application @Inject()(ws: WSClient, configuration: Configuration, mongoStatisticsRepository: MongoStatisticsRepository) extends
+class Spotify @Inject()(ws: WSClient, configuration: Configuration, mongoStatisticsRepository: MongoStatisticsRepository) extends
   Controller {
 
   val spotifyService = new WSSpotifyService(ws, configuration)
@@ -48,13 +48,11 @@ class Application @Inject()(ws: WSClient, configuration: Configuration, mongoSta
   }
 
 
-  //TODO:Setup Mongo DB for commented code to work
-
   def showMe = Action.async { implicit request =>
     val artists = spotifyService.fetchLatestTopArtists(accessToken)
     val tweet = statisticsService.createUserStatistics(accessToken.get)
     artists.map(artistList => Ok(views.html.topartists(artistList))).
-      recover { case thrown => Redirect(routes.Application.login()) }
+      recover { case thrown => Redirect(routes.Spotify.login()) }
   }
 
   def callback(code: String, state: String) = Action.async { request =>
@@ -76,7 +74,7 @@ class Application @Inject()(ws: WSClient, configuration: Configuration, mongoSta
           val refreshToken = (jsonResp \ "refresh_token").get.as[String]
 
           Future.successful(
-            Redirect(routes.Application.showMe())
+            Redirect(routes.Spotify.showMe())
               .discardingCookies(DiscardingCookie(stateKey))
               .withSession("access_token" -> accessToken, "refresh_token" -> refreshToken))
         }
@@ -84,8 +82,5 @@ class Application @Inject()(ws: WSClient, configuration: Configuration, mongoSta
     }.getOrElse(Future.successful(Redirect("/#error:no_cookies")))
   }
 
-  def topArtists = Action {
-    Ok
-  }
 
 }

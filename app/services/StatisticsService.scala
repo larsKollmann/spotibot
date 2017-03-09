@@ -2,6 +2,7 @@ package services
 
 import com.google.common.collect.MapDifference.ValueDifference
 import org.joda.time.{DateTime, Period}
+import play.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -25,17 +26,21 @@ class DefaultStatisticsService(
       }
 
     def publishMessage(counts: (StoredArtists, SpotifyArtists)): Future[Unit] = {
+      Logger.info("Stored Artists: " ++ counts._1.artists.mkString(" "))
+      Logger.info("Spotify Artists: " ++ counts._2.Artists.mkString(" "))
       counts match {
-        case (previous, current) => val artistdifference = previous.artists.diff(current.Artists)
 
-          println(artistdifference.mkString(" "))
+
+        case (previous, current) => val artistdifference = current.Artists.diff(previous.artists)
+
+          Logger.info("Artists: " ++ artistdifference.mkString("["," ","]"))
 
           def phrasing(difference: Array[String]): String = if (difference.isEmpty) "remained the same" else "changed"
 
           val durationInDays = new Period(previous.when, DateTime.now).getDays
 
           spotifyService.postTweet(
-            s"@$username in the past $durationInDays your artists " +
+            s"@$username in the past $durationInDays days, your artists " +
               s"${phrasing(artistdifference)} ${artistdifference.mkString(" ")}"
           )
 
