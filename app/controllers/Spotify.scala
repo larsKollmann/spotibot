@@ -9,19 +9,17 @@ import play.api.libs.ws.ahc.AhcCurlRequestLogger
 import play.api.libs.ws.{WSAuthScheme, WSClient}
 import play.api.mvc._
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.libs.Json
-import services.{DefaultStatisticsService, MongoStatisticsRepository, SpotifyArtists, WSSpotifyService}
+import services.{SpotifyArtists, WSSpotifyService}
 
 import scala.concurrent.Future
 
-class Spotify @Inject()(ws: WSClient, configuration: Configuration, mongoStatisticsRepository: MongoStatisticsRepository) extends
+class Spotify @Inject()(ws: WSClient, configuration: Configuration) extends
   Controller {
 
   val spotifyService = new WSSpotifyService(ws, configuration)
-  val statisticsService = new DefaultStatisticsService(mongoStatisticsRepository,spotifyService)
   val stateKey = "spotify_auth_state"
 
   lazy val clientId = configuration.getString("spotify.clientId").get
@@ -48,9 +46,18 @@ class Spotify @Inject()(ws: WSClient, configuration: Configuration, mongoStatist
   }
 
 
+  def composeTweet(artists: Future[SpotifyArtists]): String = {
+    val tweet = s"My favourite artists this week are: "
+    tweet + artists.map(x => x.Artists.mkString(", ") + "!")
+  }
+
+  def toTwitter(artists: Future[SpotifyArtists]) = Action {
+    Logger.info(composeTweet(artists))
+    Ok
+  }
+
   def showMe = Action.async { implicit request =>
     val artists = spotifyService.fetchLatestTopArtists(accessToken)
-    val tweet = statisticsService.createUserStatistics(accessToken.get)
     artists.map(artistList => Ok(views.html.topartists(artistList))).
       recover { case thrown => Redirect(routes.Spotify.login()) }
   }
